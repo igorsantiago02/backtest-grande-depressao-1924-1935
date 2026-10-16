@@ -11,6 +11,10 @@ Código e instruções de reprodução do artigo **"Análise de padrões estatí
 | `notebook/BACK_MODULAR_QUANT_artigo1.ipynb` | Notebook BACK_MODULAR_QUANT (grupo QuantInovarum / disciplina de Finanças Quantitativas), com a célula 1 adaptada para ler o dataset |
 | `requirements.txt` | Dependências (pandas, NumPy, Matplotlib) |
 
+## Resultados prontos
+
+A pasta `resultados/` já traz as saídas do script, para consulta sem precisar rodar nada: `tabela2.csv` e `tabela3.csv` (Tabelas 2 e 3 do artigo) e `figura1.png` e `figura2.png`.
+
 ## Dados
 
 O dataset **não** é redistribuído aqui. Baixe `Market_Trend_External.csv` em
