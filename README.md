@@ -13,7 +13,7 @@ Código e instruções de reprodução do artigo **"Análise de padrões estatí
 
 ## Resultados prontos
 
-A pasta `resultados/` já traz as saídas do script, para consulta sem precisar rodar nada: `tabela2.csv` e `tabela3.csv` (Tabelas 2 e 3 do artigo) e `figura1.png` e `figura2.png`.
+A pasta `resultados/` já traz as saídas do script, para consulta sem precisar rodar nada: `tabela2.csv` e `tabela3.csv` (Tabelas 2 e 3 do artigo, com a coluna extra `Vol. B&H`, volatilidade anualizada do buy-and-hold citada no texto) e `figura1.png` e `figura2.png` (idênticas às Figuras 1 e 2 do artigo).
 
 ## Dados
 

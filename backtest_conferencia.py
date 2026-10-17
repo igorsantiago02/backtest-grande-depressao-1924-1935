@@ -52,7 +52,7 @@ for i in range(len(anos) - TREINO):
         'Ano': anos[i + TREINO], 'Sharpe': sharpe(est), 'Sharpe B&H': sharpe(bh),
         'Ret. estr.': eq.iloc[-1] - 1, 'Ret. B&H': eq_bh.iloc[-1] - 1,
         'DD máx.': ((eq - eq.cummax()) / eq.cummax()).min(),
-        'CAGR': eq.iloc[-1] ** (252 / len(eq)) - 1, 'Vol.': est.std() * np.sqrt(252),
+        'CAGR': eq.iloc[-1] ** (252 / len(eq)) - 1, 'Vol.': est.std() * np.sqrt(252), 'Vol. B&H': bh.std() * np.sqrt(252),
         'Trades': int((sinal.diff().abs() == 1).sum()),
         'Dias compr. (%)': 100 * sinal.shift(1).fillna(0).mean(), 'Parâm.': f'MA{c}/{l}'})
     serie_estr += list(est); serie_bh += list(bh); datas += list(teste.Date)
@@ -61,44 +61,92 @@ t2 = pd.DataFrame(linhas)
 fases = {'Expansão / Crash': [1929], 'Contração': [1930, 1931, 1932, 1933], 'Recuperação': [1934, 1935]}
 t3 = pd.DataFrame([{'Fase': f, 'Sharpe médio': t2[t2.Ano.isin(a)].Sharpe.mean(),
                     'Vol. média': t2[t2.Ano.isin(a)]['Vol.'].mean(), 'DD médio': t2[t2.Ano.isin(a)]['DD máx.'].mean(),
-                    'Trades médios': t2[t2.Ano.isin(a)].Trades.mean(),
+                    'Trades médios': t2[t2.Ano.isin(a)].Trades.mean(), 'Vol. B&H média': t2[t2.Ano.isin(a)]['Vol. B&H'].mean(),
                     'Dias compr. (%)': t2[t2.Ano.isin(a)]['Dias compr. (%)'].mean()} for f, a in fases.items()])
 t2.to_csv('resultados/tabela2.csv', index=False); t3.to_csv('resultados/tabela3.csv', index=False)
 pd.set_option('display.width', 200)
 print(t2.round(4).to_string(index=False)); print(); print(t3.round(4).to_string(index=False))
 print('\nMédia diária OOS (todos os dias):', np.mean(serie_estr))
 
-# ---------------- figuras ----------------
-AZUL, OCRE, CINZA = '#2A62A8', '#B9781A', '#DDDDDD'
-plt.rcParams.update({'font.family': 'serif', 'font.size': 7, 'axes.spines.top': False, 'axes.spines.right': False,
+# ---------------- figuras (mesmo estilo das Figuras 1 e 2 do artigo) ----------------
+from matplotlib.lines import Line2D
+STRAT, BH, INK, MUTED, GRID = '#2A62A8', '#B9781A', '#222222', '#666666', '#DDDDDD'
+plt.rcParams.update({'font.family': 'serif', 'font.serif': ['Times New Roman', 'Liberation Serif', 'DejaVu Serif'],
+                     'font.size': 7, 'axes.titlesize': 7.5, 'axes.labelsize': 7,
+                     'xtick.labelsize': 6.5, 'ytick.labelsize': 6.5, 'legend.fontsize': 6.5,
+                     'axes.spines.top': False, 'axes.spines.right': False,
+                     'axes.edgecolor': MUTED, 'axes.linewidth': 0.6,
+                     'xtick.color': MUTED, 'ytick.color': MUTED, 'text.color': INK,
                      'axes.titleweight': 'bold', 'axes.titlelocation': 'left'})
-x = np.arange(len(t2)); pct = plt.FuncFormatter(lambda v, _: f'{v:.0%}'.replace('.', ','))
+recs = [dict(year=int(r['Ano']), sharpe=r['Sharpe'], sharpe_bh=r['Sharpe B&H'], ret=r['Ret. estr.'], ret_bh=r['Ret. B&H'],
+             dd=r['DD máx.'], cagr=r['CAGR'], vol=r['Vol.'], trades=r['Trades']) for _, r in t2.iterrows()]
+years = [r['year'] for r in recs]; x = np.arange(len(years))
+dates, st_all = datas, serie_estr
 eq_s, eq_b = np.cumprod(1 + np.array(serie_estr)), np.cumprod(1 + np.array(serie_bh))
+d = df
+pct = plt.FuncFormatter(lambda v, _: f'{v:.0%}'.replace('.', ','))
+from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
+def yearticks(a):
+    a.set_xticks(x); a.set_xticklabels([str(y) for y in years], fontsize=6.3)
+def style(a):
+    a.grid(axis='y', color=GRID, linewidth=0.5); a.set_axisbelow(True)
 
-def anos_x(a):
-    a.set_xticks(x); a.set_xticklabels(t2.Ano.astype(str)); a.grid(axis='y', color=CINZA, lw=0.5); a.set_axisbelow(True)
+# ---------------- Figura 1: a-d ----------------
+fig, axs = plt.subplots(2, 2, figsize=(6.3, 4.5)); ax = axs.flatten()
+for a in ax: style(a)
+a = ax[0]
+a.plot(dates, eq_s, color=STRAT, lw=1.2); a.plot(dates, eq_b, color=BH, lw=1.2)
+a.axhline(1, color=MUTED, lw=0.5, ls=':')
+a.xaxis.set_major_locator(mdates.YearLocator(1)); a.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+a.tick_params(axis='x', labelsize=6.3)
+a.set_title('(a) Capital acumulado OOS (base = 1)')
+a = ax[1]
+a.bar(x, [r['sharpe'] for r in recs], color=STRAT, width=0.6)
+a.plot(x, [r['sharpe_bh'] for r in recs], 'o', color=BH, ms=4)
+a.axhline(0, color=INK, lw=0.6); yearticks(a); a.set_title('(b) Sharpe Ratio anual')
+a = ax[2]; w = 0.38
+a.bar(x - w/2, [r['ret'] for r in recs], w, color=STRAT); a.bar(x + w/2, [r['ret_bh'] for r in recs], w, color=BH)
+a.axhline(0, color=INK, lw=0.6); a.yaxis.set_major_formatter(pct); yearticks(a); a.set_title('(c) Retorno anual')
+a = ax[3]
+a.bar(x, [r['dd'] for r in recs], color=STRAT, width=0.6)
+a.yaxis.set_major_locator(matplotlib.ticker.MultipleLocator(0.05)); a.yaxis.set_major_formatter(pct); yearticks(a); a.set_title('(d) Drawdown máximo da estratégia')
+fig.legend(handles=[Patch(color=STRAT), Patch(color=BH)],
+           labels=['Estratégia (cruzamento de médias)', 'Buy-and-hold (barras em c; pontos em b)'],
+           loc='upper center', ncol=2, frameon=False, bbox_to_anchor=(0.5, 1.0))
+fig.tight_layout(pad=0.4, h_pad=0.9, w_pad=0.8, rect=(0, 0, 1, 0.95))
+fig.savefig('resultados/figura1.png', dpi=300); plt.close(fig)
 
-fig, ax = plt.subplots(2, 2, figsize=(6.3, 4.5)); ax = ax.flatten()
-ax[0].plot(datas, eq_s, color=AZUL); ax[0].plot(datas, eq_b, color=OCRE); ax[0].axhline(1, ls=':', lw=0.5, color='gray')
-ax[0].set_title('(a) Capital acumulado OOS (base = 1)')
-ax[1].bar(x, t2.Sharpe, color=AZUL, width=0.6); ax[1].plot(x, t2['Sharpe B&H'], 'o', color=OCRE); ax[1].axhline(0, color='k', lw=0.6)
-anos_x(ax[1]); ax[1].set_title('(b) Sharpe anual (pontos: buy-and-hold)')
-ax[2].bar(x - 0.19, t2['Ret. estr.'], 0.38, color=AZUL); ax[2].bar(x + 0.19, t2['Ret. B&H'], 0.38, color=OCRE)
-ax[2].axhline(0, color='k', lw=0.6); ax[2].yaxis.set_major_formatter(pct); anos_x(ax[2]); ax[2].set_title('(c) Retorno anual')
-ax[3].bar(x, t2['DD máx.'], color=AZUL, width=0.6); ax[3].yaxis.set_major_formatter(pct); anos_x(ax[3])
-ax[3].set_title('(d) Drawdown máximo da estratégia')
-fig.tight_layout(); fig.savefig('resultados/figura1.png', dpi=300); plt.close(fig)
-
-fig = plt.figure(figsize=(6.3, 4.4)); gs = fig.add_gridspec(2, 3)
-a = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[0, 2]), fig.add_subplot(gs[1, 0]), fig.add_subplot(gs[1, 1:])]
-a[0].plot(x, t2['Vol.'], '-o', color=AZUL); a[0].yaxis.set_major_formatter(pct); anos_x(a[0]); a[0].set_title('(e) Volatilidade anualizada')
-a[1].bar(x, t2.CAGR, color=AZUL, width=0.6); a[1].yaxis.set_major_formatter(pct); anos_x(a[1]); a[1].set_title('(f) CAGR anual')
-a[2].bar(x, t2.Trades, color=AZUL, width=0.6); anos_x(a[2]); a[2].set_title('(g) Número de trades')
-arr = np.array(serie_estr); a[3].hist(arr[arr != 0], bins=35, color=AZUL); a[3].axvline(arr.mean(), color=OCRE, ls='--')
-a[3].set_title('(h) Retornos diários (dias comprado)')
-a[4].plot(df.Date, df.Close, color='#AAAAAA', lw=0.6, label='Preço simulado')
-a[4].plot(df.Date, df.Close.rolling(8).mean(), color=AZUL, lw=0.9, label='MM 8 dias')
-a[4].plot(df.Date, df.Close.rolling(33).mean(), color=OCRE, lw=0.9, label='MM 33 dias')
-a[4].legend(frameon=False); a[4].set_title('(i) Preço simulado e médias móveis')
-fig.tight_layout(); fig.savefig('resultados/figura2.png', dpi=300); plt.close(fig)
+# ---------------- Figura 2: e-i ----------------
+fig = plt.figure(figsize=(6.3, 4.4))
+gs = fig.add_gridspec(2, 3)
+ax = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1]), fig.add_subplot(gs[0, 2]),
+      fig.add_subplot(gs[1, 0]), fig.add_subplot(gs[1, 1:])]
+for a in ax: style(a)
+a = ax[0]
+a.plot(x, [r['vol'] for r in recs], '-o', color=STRAT, lw=1.2, ms=3.5)
+a.set_ylim(0, 0.18); a.yaxis.set_major_formatter(pct); yearticks(a); a.set_title('(e) Volatilidade anualizada')
+a = ax[1]
+a.bar(x, [r['cagr'] for r in recs], color=STRAT, width=0.6)
+a.axhline(0, color=INK, lw=0.6); a.yaxis.set_major_formatter(pct); yearticks(a); a.set_title('(f) CAGR anual')
+a = ax[2]
+a.bar(x, [r['trades'] for r in recs], color=STRAT, width=0.6)
+yearticks(a); a.set_title('(g) Número de trades'); a.yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
+a = ax[3]
+arr = np.array(st_all); arr = arr[arr != 0]
+a.hist(arr, bins=35, color=STRAT, edgecolor='white', linewidth=0.3)
+m = np.mean(st_all)
+a.axvline(m, color=BH, lw=1.2, ls='--')
+a.text(0.98, 0.95, f'média = {m:.5f}'.replace('.', ','), transform=a.transAxes, ha='right', va='top', color=INK, fontsize=6.3)
+a.xaxis.set_major_formatter(plt.FuncFormatter(lambda v, _: f'{v:.2f}'.replace('.', ',')))
+a.set_title('(h) Retornos diários OOS (dias comprado)'); a.set_ylabel('Frequência')
+a = ax[4]
+a.plot(d.Date, d.Close, color='#AAAAAA', lw=0.6, label='Preço simulado')
+a.plot(d.Date, d.Close.rolling(8).mean(), color=STRAT, lw=0.9, label='MM 8 dias')
+a.plot(d.Date, d.Close.rolling(33).mean(), color=BH, lw=0.9, label='MM 33 dias')
+a.xaxis.set_major_locator(mdates.YearLocator(1)); a.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+a.tick_params(axis='x', labelsize=6.3)
+a.set_title('(i) Preço simulado e médias móveis'); a.legend(frameon=False, loc='upper left')
+fig.tight_layout(pad=0.4, h_pad=0.9, w_pad=0.8)
+fig.savefig('resultados/figura2.png', dpi=300); plt.close(fig)
 print('Tabelas e figuras salvas em resultados/')
